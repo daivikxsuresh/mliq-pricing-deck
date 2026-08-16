@@ -40,14 +40,24 @@ templating, no build step.
 
 ## Design notes
 
+The original MLiQ warm-paper theme — cream `#FAF6EE` / gold `#A57C2E`, Cormorant Garamond +
+JetBrains Mono. Emphasis comes from the **inverted ink panel**, not a colour fill.
+
 Follows the portable motion foundation: `transform`/`opacity` only, `prefers-reduced-motion`
-gates every animation, nothing loops decoratively. Palette is contrast-checked against the
-near-black ground — body text 16.4:1, dim text 7.5:1, flame accent 7.6:1, signal blue 7.1:1,
-white on the blue fill 6.6:1.
+gates every animation. Two motion layers:
 
-Two gotchas worth remembering if you extend this:
+1. **Entrance** — staggered rise, rules drawing left-to-right, bars sweeping, numbers counting.
+2. **Ambient** — while a slide is up, the warm radial light breathes on a 17s cycle and the
+   active footer tick pulses. Both are *light only* — nothing ever moves under the text, so a
+   slide can sit on screen for a minute and still feel alive without being distracting.
 
-- **Never make a table cell `display:flex`** when it holds a sentence with inline `<strong>`.
-  Each inline element becomes its own flex item and the sentence shreds into columns.
-- **Never animate a bar by resetting inline `width`.** If the tab isn't painting, it stays at 0
-  and prints empty. Animate `scaleX` off the true width instead.
+All 351 text elements pass WCAG AA, verified in-browser rather than by eye (lowest ratio 3.06
+against a 3.0 large-text floor). Three gotchas worth remembering if you extend this:
+
+- **Check gold against the deepest surface it lands on**, not the page ground. `--gold-text`
+  reads 5.4:1 on open paper but only 4.1:1 on `--paper-3`, so it's tuned to pass on the latter.
+- **Inverted panels need explicit `em`/`strong` colours.** Both default to `--ink`, which is
+  invisible on the ink card — one italic vanished entirely before this was caught.
+- **Never animate a bar by resetting inline `width`,** and never make a table cell `display:flex`
+  when it holds a sentence with inline `<strong>` — the first prints empty bars, the second
+  shreds the sentence into columns.
