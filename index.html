@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MLiQ — Data-driven pricing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2308090B'/%3E%3Cpath d='M7 23V9h3.4l5.6 8.6L21.6 9H25v14h-3.2v-8.6L16.6 22h-1.2L10.2 14.4V23z' fill='%23FF7A45'/%3E%3C/svg%3E" />
+<style>
+/* ═══ Tokens ═══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#08090B;
+  --panel:#0D0F13;
+  --panel-2:#121519;
+  --line:rgba(255,255,255,.085);
+  --line-2:rgba(255,255,255,.16);
+
+  --text:#EDEEF0;      /* 16.4:1 on bg */
+  --dim:#9BA1AA;       /*  7.5:1 */
+  --faint:#6E747E;     /*  4.6:1 — mono labels only */
+
+  --flame:#FF7A45;     /*  7.6:1 — accent, numbers, eyebrows */
+  --flame-deep:#D9491A;
+  --signal:#6E96FF;    /*  7.1:1 — the model / MLiQ */
+  --signal-fill:#2A4FD6; /* white on it = 6.6:1 */
+  --good:#4ADE80;
+
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --eo:cubic-bezier(.16,1,.3,1);
+
+  /* type scale — authored against a 1920×1080 canvas */
+  --t-hero:104px;
+  --t-h2:60px;
+  --t-lead:25px;
+  --t-body:19px;
+  --t-small:16.5px;
+  --t-micro:14px;
+  --t-label:13px;
+  --t-stat:52px;
+  --t-stat-sm:38px;
+
+  --px:110px; --pt:74px; --pb:64px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+deck-stage:not(:defined){visibility:hidden}
+html,body{background:#000}
+
+section{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:var(--t-body);
+  line-height:1.5;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ═══ Slide frame ══════════════════════════════════════════════════════ */
+.slide{
+  width:100%;height:100%;
+  padding:var(--pt) var(--px) var(--pb);
+  display:flex;flex-direction:column;
+  position:relative;
+}
+/* static grain + vignette — texture, not motion */
+.slide::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.02;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.slide::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 120% 90% at 50% -10%,rgba(255,122,69,.055) 0%,transparent 60%),
+             radial-gradient(ellipse 100% 80% at 100% 110%,rgba(110,150,255,.05) 0%,transparent 60%);
+}
+.slide > *{position:relative;z-index:1}
+
+/* The grain is an SVG noise fill — on screen it costs nothing, but at print
+   DPI Chrome rasterizes it per page and the PDF balloons past 30MB. Drop it
+   for print; the deck is identical without it at paper resolution. */
+@media print{ .slide::before{display:none} }
+
+/* ═══ Header ═══════════════════════════════════════════════════════════ */
+.eyebrow{
+  display:flex;align-items:center;gap:16px;
+  font-family:var(--mono);font-size:var(--t-label);font-weight:500;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--flame);
+}
+.eyebrow .hair{flex:1;height:1px;background:var(--line)}
+.eyebrow .idx{color:var(--faint);letter-spacing:.18em}
+
+.head{margin-top:26px;display:grid;grid-template-columns:1fr 470px;gap:64px;align-items:end}
+h1{font-size:var(--t-hero);font-weight:600;letter-spacing:-.035em;line-height:.94}
+h2{font-size:var(--t-h2);font-weight:600;letter-spacing:-.028em;line-height:1.02}
+.lead{font-size:var(--t-lead);line-height:1.42;color:var(--dim);font-weight:400;letter-spacing:-.008em;padding-bottom:8px}
+.rule{height:1px;background:var(--line);margin:34px 0 0}
+
+/* ═══ Vocabulary ═══════════════════════════════════════════════════════ */
+.body{flex:1;display:flex;flex-direction:column;min-height:0;padding-top:34px}
+
+.label{font-family:var(--mono);font-size:var(--t-label);font-weight:500;letter-spacing:.22em;
+       text-transform:uppercase;color:var(--faint)}
+.label.hot{color:var(--flame)}
+.label.cool{color:var(--signal)}
+
+.num{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--flame);letter-spacing:.02em}
+
+.card{
+  border:1px solid var(--line);background:var(--panel);
+  border-radius:3px;padding:24px 26px;
+  transition:transform .2s var(--eo),border-color .2s var(--eo),background .2s var(--eo);
+}
+.card:hover{transform:translateY(-3px);border-color:var(--line-2);background:var(--panel-2)}
+.card.fill{background:var(--signal-fill);border-color:transparent;color:#fff}
+.card.fill .label{color:rgba(255,255,255,.72)}
+.card.fill .k{color:#fff}
+.card.ghost{background:transparent}
+
+.k{font-size:var(--t-small);line-height:1.45;color:var(--dim)}
+.k strong{color:var(--text);font-weight:600}
+.k em{font-style:italic;color:var(--text)}
+
+.stat{font-family:var(--mono);font-size:var(--t-stat);font-weight:600;letter-spacing:-.03em;
+      line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
+.stat.hot{color:var(--flame)}
+.stat.cool{color:var(--signal)}
+.stat.sm{font-size:var(--t-stat-sm)}
+.cap{font-size:var(--t-micro);color:var(--dim);margin-top:9px;line-height:1.4}
+
+.chip{display:inline-block;font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.06em;
+      padding:6px 12px;border:1px solid var(--line-2);border-radius:2px;color:var(--dim)}
+.chip.hot{border-color:rgba(255,122,69,.45);color:var(--flame)}
+.chip.cool{border-color:rgba(110,150,255,.5);color:var(--signal)}
+.chip.solid{background:var(--signal-fill);border-color:transparent;color:#fff}
+.chip.good{border-color:rgba(74,222,128,.45);color:var(--good)}
+
+.meter{display:block;height:9px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;position:relative}
+.meter-fill{display:block;height:100%;width:var(--w);background:var(--flame);border-radius:2px}
+.meter-fill.cool{background:var(--signal)}
+.meter-fill.dimmed{background:rgba(255,255,255,.22)}
+
+/* right-anchored track: bars grow leftward (backwards through time) */
+.track{position:relative;height:15px;background:rgba(255,255,255,.05);border-radius:2px}
+.track .bar{position:absolute;top:0;right:0;height:100%;width:var(--w);border-radius:2px}
+.bar.past{background:rgba(255,255,255,.2)}
+.bar.now{background:var(--flame)}
+
+.axis{display:flex;justify-content:space-between;font-family:var(--mono);
+      font-size:12px;color:var(--faint);letter-spacing:.1em;margin-top:9px}
+
+.footer{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:22px;margin-top:auto;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:12px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--faint);
+}
+.ticks{display:flex;gap:6px;align-items:center}
+.ticks i{width:16px;height:2px;background:rgba(255,255,255,.14);display:block;border-radius:1px}
+.ticks i.on{background:var(--flame);width:26px}
+
+/* ═══ Slide-specific layout ════════════════════════════════════════════ */
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
+       border:1px solid var(--line);border-radius:3px;overflow:hidden;flex:1}
+.cols3 > div{background:var(--bg);padding:30px 30px 26px;display:flex;flex-direction:column;gap:14px}
+.cols3 > div.accentfill{background:var(--signal-fill);color:#fff}
+.cols3 > div.accentfill .k{color:rgba(255,255,255,.9)}
+.cols3 > div.accentfill .k strong{color:#fff}
+.cols3 > div.accentfill .num,.cols3 > div.accentfill .label{color:rgba(255,255,255,.75)}
+.hline{font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1.18}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.stack{display:flex;flex-direction:column;gap:18px}
+
+/* decision rule */
+.rule-eq{display:flex;flex-wrap:wrap;align-items:center;gap:11px;font-family:var(--mono);
+         font-size:25px;font-weight:500;letter-spacing:-.01em;color:var(--text)}
+.rule-eq .term{padding:8px 14px;border:1px solid var(--line-2);border-radius:2px;background:var(--panel)}
+.rule-eq .op{color:var(--faint)}
+.rule-eq .gt{color:var(--flame);font-weight:600}
+.rule-eq .offer{border-color:rgba(255,122,69,.45);color:var(--flame)}
+
+/* flow diagram */
+.flow{display:flex;align-items:stretch;gap:16px}
+.node{border:1px solid var(--line);background:var(--panel);border-radius:3px;padding:16px 18px;flex:1}
+.node.solid{background:var(--signal-fill);border-color:transparent;color:#fff}
+.node.dead{border-style:dashed;border-color:var(--line-2);background:transparent;color:var(--faint)}
+.node .nt{font-size:var(--t-small);font-weight:600;letter-spacing:-.01em}
+.node .nd{font-size:13px;color:var(--dim);margin-top:6px;line-height:1.4}
+.node.solid .nd{color:rgba(255,255,255,.82)}
+.arrow{align-self:center;color:var(--faint);font-family:var(--mono);font-size:20px;flex:none}
+
+.stagerail{display:flex;align-items:center;gap:0}
+.stagerail .st{flex:1;text-align:center;padding:15px 8px;border:1px solid var(--line);
+               border-right:none;background:var(--panel);font-size:var(--t-small);font-weight:600}
+.stagerail .st:last-child{border-right:1px solid var(--line)}
+.stagerail .st .sn{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);
+                   letter-spacing:.2em;margin-bottom:7px}
+.stagerail .st.win{background:var(--signal-fill);border-color:transparent;color:#fff}
+.stagerail .st.win .sn{color:rgba(255,255,255,.7)}
+.stagerail .st.after{background:transparent;color:var(--dim)}
+
+.holds{display:flex;flex-direction:column;gap:8px}
+.hold{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid var(--line);
+      border-radius:2px;background:var(--panel);font-size:var(--t-small)}
+.hold .hn{font-family:var(--mono);font-size:12px;color:var(--flame);letter-spacing:.16em;width:74px;flex:none}
+.hold.first{border-color:rgba(255,122,69,.4)}
+.hold .hd{color:var(--dim);font-size:13px}
+
+/* comparison table */
+.cmp{display:grid;grid-template-columns:150px 1fr 1fr;gap:0;border:1px solid var(--line);
+     border-radius:3px;overflow:hidden;flex:1}
+/* block, not flex — flex would turn each <strong> into its own flex item and
+   shred the sentence into columns */
+.cmp > div{padding:16px 20px;border-bottom:1px solid var(--line);display:block}
+.cmp > div:nth-child(3n+1){background:rgba(255,255,255,.018)}
+.cmp > div:nth-child(3n+2){border-right:1px solid var(--line)}
+.cmp > div:nth-child(3n+1){border-right:1px solid var(--line)}
+.cmp > div:nth-last-child(-n+3){border-bottom:none}
+.cmp .rl{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.cmp .cell{font-size:14.5px;line-height:1.45;color:var(--dim)}
+.cmp .cell strong{color:var(--text);font-weight:600}
+.cmp .hdr{display:block;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--text);padding-top:20px;padding-bottom:20px}
+.cmp .hdr .hh{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;color:var(--flame);display:block;margin-bottom:6px}
+.cmp .hdr.two .hh{color:var(--signal)}
+
+/* shapes */
+.shape{display:grid;grid-template-columns:190px 1fr 58px;gap:14px;align-items:center;font-size:14px}
+.shape .sv{font-family:var(--mono);font-size:14px;color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+.shape .sl{color:var(--dim)}
+
+/* alternatives */
+.alt{display:grid;grid-template-columns:330px 150px minmax(0,1fr);gap:24px;align-items:start;
+     padding:19px 0;border-top:1px solid var(--line)}
+.alt .an{font-size:var(--t-small);font-weight:600;letter-spacing:-.01em}
+.alt .ad{font-size:13px;color:var(--faint);margin-top:5px;line-height:1.4}
+.alt .ag{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em;padding-top:3px}
+.alt .av{font-size:14.5px;color:var(--dim);line-height:1.45;max-width:950px}
+.alt .av strong{color:var(--text);font-weight:600}
+/* verdict label — its own class, so inline <strong> in the copy stays inline */
+.alt .av .vl{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.16em;
+             margin-bottom:6px;font-weight:600;text-transform:uppercase}
+.alt .av.adopt .vl{color:var(--good)}
+.alt .av.bound .vl{color:var(--flame)}
+.alt .av.chall .vl{color:var(--signal)}
+
+.split{display:flex;height:11px;border-radius:2px;overflow:hidden;gap:2px}
+.split span{display:block;height:100%;width:var(--w);flex:none}
+
+.qs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.qs > div{background:var(--bg);padding:20px 22px}
+
+/* ═══ Motion ═══════════════════════════════════════════════════════════ */
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(.965)}to{opacity:1;transform:none}}
+@keyframes sweep{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Full-width is the BASE state: if the animation never runs — print, reduced
+   motion, a throttled background tab — every bar still reads at its true
+   value. The sweep only ever animates transform, never width. */
+.meter-fill{transform-origin:left}
+.track .bar{transform-origin:right}   /* grows leftward — backwards through time */
+.split > span{transform-origin:left}
+
+@media (prefers-reduced-motion:no-preference){
+  [data-deck-active] .r{animation:rise .6s var(--eo) both;animation-delay:var(--d,0s)}
+  [data-deck-active] .f{animation:fade .7s var(--eo) both;animation-delay:var(--d,0s)}
+  [data-deck-active] .p{animation:pop .55s var(--eo) both;animation-delay:var(--d,0s)}
+  [data-deck-active] .meter-fill,
+  [data-deck-active] .track .bar,
+  [data-deck-active] .split > span{animation:sweep .95s var(--eo) both;
+                                   animation-delay:var(--sd,.4s)}
+}
+</style>
+</head>
+<body>
+
+<deck-stage width="1920" height="1080">
+
+<!-- ════════════════ 1 · TITLE ════════════════ -->
+<section data-label="Data-driven pricing">
+  <div class="slide">
+    <div class="eyebrow r"><span>MLiQ — Market-Led Intelligent Quoting</span><span class="hair"></span></div>
+
+    <div class="head">
+      <h1 class="r" style="--d:.08s">Data-driven<br>pricing</h1>
+      <p class="lead r" style="--d:.18s">Starting with luxury event venues — where every date is a
+        one-off and every price is a negotiation.</p>
+    </div>
+
+    <div class="rule r" style="--d:.24s"></div>
+
+    <div class="body">
+      <div class="cols3">
+        <div class="r" style="--d:.34s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">01</span><span class="label">The partner</span>
+          </div>
+          <p class="hline">A Manhattan event venue selling event days at</p>
+          <div class="stat hot" data-count="200" data-prefix="$50K–$" data-suffix="K">$50K–$200K</div>
+          <p class="k" style="margin-top:auto">Galas, conferences, celebrations — booked one date at a
+            time.</p>
+        </div>
+
+        <div class="r" style="--d:.44s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">02</span><span class="label">The incumbent</span>
+          </div>
+          <p class="hline">A static rate card</p>
+          <p class="k">Varies only by year, month and weekday.</p>
+          <div class="label" style="margin-top:4px">What it never sees</div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+            <span class="chip p" style="--d:.72s">Event type</span>
+            <span class="chip p" style="--d:.80s">Lead time</span>
+            <span class="chip p" style="--d:.88s">Demand pressure</span>
+          </div>
+          <p class="k" style="margin-top:auto">Every quote is negotiated by hand — and the hardest call,
+            <em>take this deal or hold the date for a better one</em>, is made on gut feel.</p>
+        </div>
+
+        <div class="accentfill r" style="--d:.56s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">03</span><span class="label">MLiQ</span>
+          </div>
+          <p class="hline">Replace the card with models trained on the venue's own sales history.</p>
+          <p class="k" style="margin-top:auto">Delivered inside the existing Salesforce workflow —
+            pricing and lead scoring where the sellers already work.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 2 · PREDICT, THEN PRESCRIBE ════════════════ -->
+<section data-label="Predict, then prescribe">
+  <div class="slide">
+    <div class="eyebrow r"><span>What we're trying to achieve</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">Predict, then prescribe</h2>
+      <p class="lead r" style="--d:.16s">Stage 1 predicts what shows up and what it's worth.
+        Stage 2 prescribes the call.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:18px;padding-top:28px">
+      <div class="grid2">
+        <div class="card r" style="--d:.30s">
+          <div class="label hot">Predictive · Model 1 — Demand</div>
+          <p class="hline" style="margin:12px 0 10px;font-size:24px">What kind of demand does this date attract?</p>
+          <p class="k">Event type and calendar footprint. A conference books midweek and consumes
+            2–4 days with load-ins; a gala takes one.</p>
+        </div>
+        <div class="card r" style="--d:.38s">
+          <div class="label cool">Predictive · Model 2 — Value</div>
+          <p class="hline" style="margin:12px 0 10px;font-size:24px">What should this date cost?</p>
+          <p class="k">By event type, section, weekday and month — as a <strong>negotiable range</strong>,
+            not a single number.</p>
+        </div>
+      </div>
+
+      <div class="card ghost r" style="--d:.46s;border-color:rgba(255,122,69,.28)">
+        <div style="display:grid;grid-template-columns:1fr 250px;gap:38px;align-items:center">
+          <div>
+            <div class="label hot">Prescriptive — pricing the opportunity cost</div>
+            <p class="k" style="margin-top:11px;font-size:17px">Accepting a one-day social on a Wednesday
+              destroys the <strong>Wed+Thu</strong> and <strong>Tue+Wed</strong> conference blocks —
+              the two most common multi-day shapes in the book.</p>
+          </div>
+          <div style="text-align:right">
+            <div class="stat hot" data-count="195" data-prefix="$" data-suffix="K">$195K</div>
+            <div class="cap">median block value</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card r" style="--d:.54s;background:var(--panel-2)">
+        <div class="label" style="margin-bottom:14px">One decision rule</div>
+        <div class="rule-eq">
+          <span class="term p" style="--d:.70s">Hold the date if</span>
+          <span class="term p" style="--d:.78s">P(better arrives)</span>
+          <span class="op p" style="--d:.84s">×</span>
+          <span class="term p" style="--d:.90s">E[value]</span>
+          <span class="op p" style="--d:.96s">−</span>
+          <span class="term p" style="--d:1.02s">holding cost</span>
+          <span class="gt p" style="--d:1.10s">&gt;</span>
+          <span class="term offer p" style="--d:1.18s">the offer in hand</span>
+        </div>
+      </div>
+
+      <div class="grid2 r" style="--d:.62s;gap:32px;align-items:center">
+        <div>
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="label">The bar to clear</span>
+            <span class="label" style="letter-spacing:.1em;text-transform:none">MAE — lower is better</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:16px;margin-top:8px">
+            <span class="stat hot" data-count="56.4" data-decimals="1" data-suffix="%">56.4%</span>
+            <span class="cap" style="margin:0">head-to-head vs the rate card</span>
+          </div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="label" style="width:104px">Fitted</span>
+              <span class="meter" style="flex:1"><b class="meter-fill" style="--w:90.6%"></b></span>
+              <span class="label" style="color:var(--flame);width:74px;text-align:right">$29,308</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="label" style="width:104px">Rate card</span>
+              <span class="meter" style="flex:1"><b class="meter-fill dimmed" style="--w:100%"></b></span>
+              <span class="label" style="width:74px;text-align:right">$32,354</span>
+            </div>
+          </div>
+        </div>
+        <p class="k">Curves fitted to realized bookings already beat the card — <em>in-sample today</em>.
+          The bake-off re-measures it on an out-of-time holdout. <strong>The models must clear the
+          fitted curves, not the card.</strong></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 3 · THE DATA ════════════════ -->
+<section data-label="The data">
+  <div class="slide">
+    <div class="eyebrow r"><span>The data</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">One venue's history,<br>2021–2026</h2>
+      <p class="lead r" style="--d:.16s">Extracted and anonymized end-to-end: pseudonyms, an allow list
+        of approved fields, and no names, emails, or free text leaving the CRM.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:30px">
+      <div class="grid4">
+        <div class="r" style="--d:.30s">
+          <div class="stat" data-count="3985">3,985</div>
+          <div class="cap">opportunities — the deals</div>
+        </div>
+        <div class="r" style="--d:.38s">
+          <div class="stat" data-count="5877">5,877</div>
+          <div class="cap">reservations — the calendar</div>
+        </div>
+        <div class="r" style="--d:.46s">
+          <div class="stat hot" data-count="1170">1,170</div>
+          <div class="cap">lost opportunities restored</div>
+        </div>
+        <div class="r" style="--d:.54s">
+          <div class="stat hot" data-count="131" data-prefix="$" data-suffix="M">$131M</div>
+          <div class="cap">quoted-and-lost revenue recovered during data cleanup</div>
+        </div>
+      </div>
+
+      <div class="grid2" style="gap:34px;align-items:stretch;flex:1">
+        <div class="card r" style="--d:.62s;display:flex;flex-direction:column">
+          <div class="label">The hole</div>
+          <p class="k" style="margin-top:11px;font-size:17px">2021–2023 was migrated from a legacy CRM
+            <strong>as wins only</strong> — the lost deals existed as empty shells, or not at all.</p>
+          <div style="display:flex;gap:34px;margin-top:auto;padding-top:24px">
+            <div>
+              <div class="stat hot" data-count="266">266</div>
+              <div class="cap">opportunities rebuilt from scratch</div>
+            </div>
+            <div>
+              <div class="stat hot" data-count="904">904</div>
+              <div class="cap">empty shells repaired</div>
+            </div>
+          </div>
+          <p class="k" style="margin-top:auto;padding-top:18px;font-size:14px">True inquiry dates, loss
+            dates, day-grain reservations and quoted dollars — verified to the cent against the source.</p>
+        </div>
+
+        <div class="r" style="--d:.70s;display:flex;flex-direction:column">
+          <div class="label">Usable demand history</div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px;
+                      padding:14px 0">
+            <div>
+              <div class="label" style="margin-bottom:11px">Before — as delivered</div>
+              <div class="track"><b class="bar past" style="--w:40%"></b></div>
+            </div>
+            <div>
+              <div class="label hot" style="margin-bottom:11px">After — reconstructed</div>
+              <div class="track"><b class="bar now" style="--w:80%"></b></div>
+              <div class="axis">
+                <span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span><span>2026</span>
+              </div>
+            </div>
+          </div>
+          <p class="k" style="margin-top:auto;padding-top:22px;font-size:19px">Demand history now runs
+            from <strong>2022</strong>, not 2024. <strong>The modeling window doubled.</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 4 · FINDING THE GRAIN ════════════════ -->
+<section data-label="Finding the grain">
+  <div class="slide">
+    <div class="eyebrow r"><span>The data dictionary</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">Finding the grain</h2>
+      <p class="lead r" style="--d:.16s">The unit of analysis had to be earned — the calendar lies
+        about money.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:26px;justify-content:space-between">
+      <div style="display:grid;grid-template-columns:1fr 1fr 340px;gap:20px">
+        <div class="card r" style="--d:.30s">
+          <div class="label hot">The trap</div>
+          <p class="k" style="margin-top:11px">Reservation money fields are formulas that read the
+            <strong>parent Opportunity</strong>. Summing day money off the calendar inflates revenue</p>
+          <div class="stat hot sm" style="margin-top:14px" data-count="2.5" data-decimals="1" data-suffix="×">2.5×</div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:11px">
+              <span class="label" style="width:96px">Calendar sum</span>
+              <span class="meter" style="flex:1"><b class="meter-fill" style="--w:100%"></b></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <span class="label" style="width:96px">Actual</span>
+              <span class="meter" style="flex:1"><b class="meter-fill dimmed" style="--w:40%"></b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card r" style="--d:.38s">
+          <div class="label">The fix</div>
+          <p class="k" style="margin-top:11px">Rebuild per-day dollars from the <strong>product lines
+            underneath</strong> — they reconcile to opportunity totals to the cent.</p>
+          <div class="chip good" style="margin-top:18px">Reconciled ✓</div>
+        </div>
+
+        <div class="card fill r" style="--d:.46s">
+          <div class="label">The target</div>
+          <p class="hline" style="margin:11px 0 12px;font-size:23px">Venue rent per event day</p>
+          <div class="stat" data-count="80000" data-prefix="$">$80,000</div>
+          <div class="cap" style="color:rgba(255,255,255,.78)">median won · full venue $90K · partial $34.75K</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px">
+        <div class="card r" style="--d:.56s">
+          <div class="label">Modeling grain 1</div>
+          <div class="stat sm" style="margin-top:12px" data-count="3706">3,706</div>
+          <div class="cap"><strong style="color:var(--text)">EVENTS</strong> — one per inquiry: outcome,
+            event type, true inquiry and loss dates.</div>
+        </div>
+        <div class="card r" style="--d:.64s">
+          <div class="label">Modeling grain 2</div>
+          <div class="stat sm" style="margin-top:12px" data-count="5851">5,851</div>
+          <div class="cap"><strong style="color:var(--text)">EVENT-DAYS</strong> — one per day per venue
+            section: its own hold position, its own dollars.</div>
+        </div>
+        <div class="card r" style="--d:.72s">
+          <div class="label">Outcomes</div>
+          <div style="display:flex;gap:22px;margin-top:12px;align-items:baseline">
+            <div><span class="stat sm" data-count="659">659</span><div class="cap">won</div></div>
+            <div><span class="stat sm" style="color:var(--dim)" data-count="2981">2,981</span><div class="cap">lost</div></div>
+            <div><span class="stat sm" style="color:var(--faint)" data-count="66">66</span><div class="cap">open</div></div>
+          </div>
+          <div class="split" style="margin-top:16px">
+            <span style="background:var(--good);--w:18%"></span>
+            <span style="background:rgba(255,255,255,.22);--w:80%"></span>
+            <span style="background:var(--flame);--w:2%"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card ghost r" style="--d:.80s;border-color:rgba(255,122,69,.28);
+           display:flex;align-items:center;gap:28px">
+        <span class="stat sm hot" style="flex:none" data-count="4.5" data-decimals="1" data-suffix=":1">4.5:1</span>
+        <p class="k" style="font-size:17px">lost to won — exactly why a model that learns only from
+          wins <strong>misreads the market</strong>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 5 · INQUIRY TO BOOKED ════════════════ -->
+<section data-label="Inquiry to Booked">
+  <div class="slide">
+    <div class="eyebrow r"><span>Salesforce — object &amp; stage flow</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">Inquiry to Booked</h2>
+      <p class="lead r" style="--d:.16s">Every inquiry lands as a Lead. Once qualified it becomes an
+        Opportunity that holds dates on the master calendar.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:30px;justify-content:space-between">
+      <div>
+        <div style="display:flex;align-items:baseline;gap:14px" class="r"><span class="num">01</span>
+          <span class="label">Capture — any channel, one entry point</span></div>
+        <div class="flow" style="margin-top:18px">
+          <div class="node r" style="--d:.30s;flex:0 0 210px">
+            <div class="nt">Channels</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">
+              <span class="chip p" style="--d:.46s;font-size:12px;padding:4px 9px">Webform</span>
+              <span class="chip p" style="--d:.52s;font-size:12px;padding:4px 9px">Email</span>
+              <span class="chip p" style="--d:.58s;font-size:12px;padding:4px 9px">Phone</span>
+              <span class="chip p" style="--d:.64s;font-size:12px;padding:4px 9px">Marketplace</span>
+            </div>
+          </div>
+          <span class="arrow f" style="--d:.42s">→</span>
+          <div class="node solid r" style="--d:.48s;flex:0 0 190px">
+            <div class="label" style="color:rgba(255,255,255,.72)">Object</div>
+            <div class="nt" style="font-size:24px;margin-top:5px">Lead</div>
+          </div>
+          <span class="arrow f" style="--d:.58s">→</span>
+          <div class="node r" style="--d:.64s">
+            <div class="label">Child of Lead</div>
+            <div class="nt" style="margin-top:5px">Lead Product</div>
+            <div class="nd">Venue rent, beverage, staffing</div>
+          </div>
+          <div class="node r" style="--d:.72s">
+            <div class="label">Child of Lead</div>
+            <div class="nt" style="margin-top:5px">Lead Reservation</div>
+            <div class="nd">Requested dates + venue sections</div>
+          </div>
+        </div>
+        <p class="k r" style="--d:.80s;margin-top:13px;font-size:14px">Each Lead Reservation looks up
+          <strong>one</strong> Lead Product — and the Lead.</p>
+      </div>
+
+      <div>
+        <div class="r" style="display:flex;align-items:baseline;gap:14px;--d:.86s">
+          <span class="num">02</span><span class="label">Qualify — sales reviews every lead</span></div>
+        <div class="flow" style="margin-top:18px;align-items:center">
+          <div class="node r" style="--d:.90s;flex:0 0 210px;border-color:var(--line-2)">
+            <div class="label">Decision</div>
+            <div class="nt" style="margin-top:5px">Lead review</div>
+          </div>
+          <span class="arrow f" style="--d:.98s">→</span>
+          <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+            <div class="node solid r" style="--d:1.04s">
+              <div class="label" style="color:rgba(255,255,255,.72)">Qualified</div>
+              <div style="display:flex;gap:9px;margin-top:9px;flex-wrap:wrap">
+                <span class="chip" style="border-color:rgba(255,255,255,.4);color:#fff">Account</span>
+                <span class="chip" style="border-color:rgba(255,255,255,.4);color:#fff">Contact</span>
+                <span class="chip" style="border-color:rgba(255,255,255,.4);color:#fff">Opportunity</span>
+              </div>
+              <div class="nd" style="margin-top:10px">Lead Products and Lead Reservations carry over</div>
+            </div>
+            <div class="node dead r" style="--d:1.12s">
+              <div class="label">Unqualified</div>
+              <div class="nd">Marked and closed — no Account, Contact or Opportunity created</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 6 · PIPELINE, HOLDS AND MONEY ════════════════ -->
+<section data-label="Pipeline, holds and money">
+  <div class="slide">
+    <div class="eyebrow r"><span>Salesforce — object &amp; stage flow</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">Pipeline, holds and money</h2>
+      <p class="lead r" style="--d:.16s">The money rides on the products attached to each day.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:28px">
+      <div>
+        <div style="display:flex;align-items:baseline;gap:14px" class="r"><span class="num">03</span>
+          <span class="label">Pipeline — opportunity stages</span></div>
+        <div class="stagerail" style="margin-top:16px">
+          <div class="st r" style="--d:.30s"><span class="sn">Stage 1</span>Qualified</div>
+          <div class="st r" style="--d:.36s"><span class="sn">Stage 2</span>Proposal</div>
+          <div class="st r" style="--d:.42s"><span class="sn">Stage 3</span>Negotiation</div>
+          <div class="st r" style="--d:.48s"><span class="sn">Stage 4</span>Contract</div>
+          <div class="st win r" style="--d:.54s"><span class="sn">Won here</span>Booked</div>
+          <div class="st after r" style="--d:.60s"><span class="sn">Delivered</span>Closed Won</div>
+        </div>
+        <div class="grid2 r" style="--d:.66s;margin-top:14px;gap:20px">
+          <p class="k" style="font-size:14px"><strong>Won at Booked.</strong> Contract signed, deposit in.
+            Closed Won is bookkeeping after delivery and security deposit refund.</p>
+          <p class="k" style="font-size:14px"><strong>Closed Lost.</strong> Exit from any stage — mostly
+            on <em>date availability</em> and <em>price</em>.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:34px;flex:1">
+        <div style="display:flex;flex-direction:column">
+          <div class="r" style="display:flex;align-items:baseline;gap:14px;--d:.72s">
+            <span class="num">04</span><span class="label">Calendar and money</span></div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;flex:1;
+                      justify-content:space-between">
+            <div class="node r" style="--d:.78s">
+              <div class="label cool">Master calendar</div>
+              <div class="nt" style="margin-top:5px">Reservation</div>
+              <div class="nd">Each product on the Opportunity — every day, load-in included</div>
+            </div>
+            <div class="node r" style="--d:.86s">
+              <div class="label">Child of Opportunity</div>
+              <div class="nt" style="margin-top:5px">Opportunity Product</div>
+              <div class="nd">Venue rent · Beverage · Staffing — one row per item, per day</div>
+            </div>
+            <p class="k r" style="--d:.94s;font-size:14px"><strong>Per-day pricing.</strong> Money sits on
+              each day's line items, not the Opportunity as a whole.</p>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column">
+          <div class="label hot r" style="--d:.78s">Hold position — one date, many deals</div>
+          <div class="holds" style="margin-top:16px">
+            <div class="hold first r" style="--d:.84s"><span class="hn">1st</span>
+              <span>First claim on the date</span></div>
+            <div class="hold r" style="--d:.92s"><span class="hn">2nd</span>
+              <span class="hd">Moves up if the 1st is released</span></div>
+            <div class="hold r" style="--d:1.00s"><span class="hn">3rd</span>
+              <span class="hd">Still tracked and quotable</span></div>
+          </div>
+          <div class="grid2" style="margin-top:auto;padding-top:18px;gap:14px">
+            <div class="card r" style="--d:1.08s;padding:16px 18px">
+              <div class="label" style="color:var(--good)">Win</div>
+              <p class="k" style="margin-top:7px;font-size:14px">Holds flip to <strong>Confirmed</strong>;
+                date blocked.</p>
+            </div>
+            <div class="card r" style="--d:1.16s;padding:16px 18px">
+              <div class="label hot">Loss</div>
+              <p class="k" style="margin-top:7px;font-size:14px">Date released; <strong>next hold moves
+                up</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 7 · THE TWO PREDICTIVE MODELS ════════════════ -->
+<section data-label="The two predictive models">
+  <div class="slide">
+    <div class="eyebrow r"><span>Models I</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">The two predictive models</h2>
+      <p class="lead r" style="--d:.16s">Different grains, different training sets — one decision.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:24px">
+      <div style="display:grid;grid-template-columns:1fr 500px;gap:30px;flex:1;min-height:0">
+        <div class="cmp r" style="--d:.30s">
+          <div></div>
+          <div class="hdr"><span class="hh">Model 1</span>Demand</div>
+          <div class="hdr two"><span class="hh">Model 2</span>Value</div>
+
+          <div class="rl">Estimates</div>
+          <div class="cell">Arrival rate <strong>λ</strong> per demand shape, by weekday, month, days-out.
+            <strong>P(better deal in k days)</strong></div>
+          <div class="cell">Venue rent per event day, as a <strong>low / point / high</strong> range —
+            every price here is negotiated.</div>
+
+          <div class="rl">Algorithm</div>
+          <div class="cell">Poisson arrival model, partial pooling across sparse shape cells</div>
+          <div class="cell">Gradient-boosted quantile regression on log rent/day</div>
+
+          <div class="rl">Grain</div>
+          <div class="cell"><strong>Event (3,706)</strong> — an event arrives once, then occupies days;
+            day grain would count a 3-day conference three times</div>
+          <div class="cell"><strong>Event-day (5,851)</strong> — the same event's Thursday and Saturday
+            are worth different money</div>
+
+          <div class="rl">Features</div>
+          <div class="cell">weekday, month, lead time, demand shape (type × footprint), market segment</div>
+          <div class="cell">event type, venue section, weekday, month, guest count, lead time,
+            footprint length, segment, industry</div>
+
+          <div class="rl">Trains on</div>
+          <div class="cell">All arrivals, <strong>won AND lost</strong> — a deal lost to a blocked date is
+            displaced demand, not a price rejection</div>
+          <div class="cell">Priced won days + clean rejections only; blocked-date losses excluded — their
+            high quotes would teach <em>“high prices lose”</em></div>
+        </div>
+
+        <div class="stack">
+          <div class="card r" style="--d:.42s">
+            <div class="label hot">The demand shapes are real cells, not theory</div>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-top:16px">
+              <div class="shape"><span class="sl">1-day conference-family</span>
+                <span class="meter"><b class="meter-fill" style="--w:100%"></b></span>
+                <span class="sv" data-count="973">973</span></div>
+              <div class="shape"><span class="sl">1-day gala</span>
+                <span class="meter"><b class="meter-fill" style="--w:59.9%"></b></span>
+                <span class="sv" data-count="583">583</span></div>
+              <div class="shape"><span class="sl">1-day reception</span>
+                <span class="meter"><b class="meter-fill" style="--w:46.5%"></b></span>
+                <span class="sv" data-count="452">452</span></div>
+              <div class="shape"><span class="sl">1-day wedding</span>
+                <span class="meter"><b class="meter-fill" style="--w:37.2%"></b></span>
+                <span class="sv" data-count="362">362</span></div>
+              <div class="shape"><span class="sl">2-day conference</span>
+                <span class="meter"><b class="meter-fill cool" style="--w:25.1%"></b></span>
+                <span class="sv" data-count="244">244</span></div>
+              <div class="shape"><span class="sl">3-day conference</span>
+                <span class="meter"><b class="meter-fill cool" style="--w:7.5%"></b></span>
+                <span class="sv" data-count="73">73</span></div>
+            </div>
+            <p class="k" style="margin-top:16px;font-size:13.5px">Thin tails share strength through partial
+              pooling; the <strong style="color:var(--signal)">multi-day corporate shapes</strong> are the
+              $195K blocks the opportunity-cost math protects.</p>
+          </div>
+
+          <div class="card r" style="--d:.52s;background:var(--panel-2)">
+            <div class="label">One shared train / serve contract</div>
+            <p class="k" style="margin-top:11px;font-size:13.5px"><strong>9 required + 5 optional</strong>
+              features — and leakage forbidden by construction: rules-engine outputs, post-outcome fields
+              and dead source fields <strong>raise an error</strong> if they reach a model. Lead source is
+              masked on reconstructed 2021–23 rows.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 8 · ALTERNATIVES ════════════════ -->
+<section data-label="Alternatives">
+  <div class="slide">
+    <div class="eyebrow r"><span>Models II</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">Alternatives</h2>
+      <p class="lead r" style="--d:.16s">Every candidate is judged on the same rows, the same splits,
+        once.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:24px;justify-content:space-between">
+      <div>
+        <div class="alt" style="border-top:none;padding-top:0">
+          <div class="label" style="grid-column:1">Alternative</div>
+          <div class="label">Grain</div>
+          <div class="label">Verdict</div>
+        </div>
+
+        <div class="alt r" style="--d:.30s">
+          <div><div class="an">Multinomial event-type model</div>
+            <div class="ad">Advisor's suggestion: P(event type | weekday, month, year)</div></div>
+          <div class="ag">Event</div>
+          <div class="av adopt"><span class="vl">Adopted</span>As the demand-shape baseline inside Model 1 — but
+            arrival intensity stays separate: <em>what</em> books Wednesdays and <em>how often</em>
+            anything arrives move independently.</div>
+        </div>
+
+        <div class="alt r" style="--d:.38s">
+          <div><div class="an">Summed one-day opportunity costs</div>
+            <div class="ad">Price a hold as the sum of individual day costs</div></div>
+          <div class="ag">Event-day</div>
+          <div class="av bound"><span class="vl">Kept as lower bound</span>It undercounts block displacement — a
+            Wednesday booking kills every multi-day block crossing Wednesday — so destroyed blocks are
+            priced <strong>jointly at event grain</strong>.</div>
+        </div>
+
+        <div class="alt r" style="--d:.46s">
+          <div><div class="an">Neural networks</div>
+            <div class="ad">Feed-forward net for value; neural point-process for arrivals</div></div>
+          <div class="ag">Same as the champion each challenges</div>
+          <div class="av chall"><span class="vl">Run as challengers</span>Viable now the reconstruction doubled
+            the history — identical rows and partitions, promoted only on shared-holdout wins.</div>
+        </div>
+      </div>
+
+      <div class="grid2" style="gap:20px">
+        <div class="card r" style="--d:.56s">
+          <div class="label hot">One partition design — out-of-time 60 / 20 / 20</div>
+          <div class="split" style="margin-top:16px">
+            <span style="background:var(--flame);--w:60%"></span>
+            <span style="background:rgba(255,255,255,.28);--w:20%"></span>
+            <span style="background:var(--signal);--w:20%"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:9px" class="label">
+            <span>Train 60</span><span>Validate 20</span><span style="color:var(--signal)">Holdout 20</span>
+          </div>
+          <p class="k" style="margin-top:15px;font-size:14px">Ordered by event date, cut at event
+            boundaries, grouped by account — <strong>no client and no multi-day event straddles a
+            split</strong>. The final 20% is one shared holdout, <strong>scored once</strong>.</p>
+        </div>
+
+        <div class="card r" style="--d:.64s">
+          <div class="label">Why GBM starts champion</div>
+          <p class="k" style="margin-top:12px;font-size:14px">On ~3,700 tabular events: native quantile
+            loss for negotiated ranges, monotonic constraints, and attributions a revenue manager can
+            audit.</p>
+          <p class="k" style="margin-top:12px;font-size:14px">Whatever wins must also beat the re-fit
+            curves on the holdout. <strong>Nothing ships on architecture appeal.</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 9 · WHERE IT STANDS ════════════════ -->
+<section data-label="Where it stands">
+  <div class="slide">
+    <div class="eyebrow r"><span>Where it stands</span><span class="hair"></span></div>
+    <div class="head">
+      <h2 class="r" style="--d:.08s">What we're claiming —<br>and what would prove us wrong</h2>
+      <p class="lead r" style="--d:.16s">The data work is done. What's left is the measurement we've
+        already committed to.</p>
+    </div>
+    <div class="rule r" style="--d:.22s"></div>
+
+    <div class="body" style="gap:26px">
+      <div class="cols3">
+        <div class="r" style="--d:.30s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">01</span><span class="label">The claim</span></div>
+          <p class="hline" style="font-size:24px">A model trained on this venue's own history prices a
+            date better than a card that cannot see event type, lead time, or demand pressure.</p>
+          <p class="k" style="margin-top:auto">And it prices the harder question the card never asks —
+            <em>hold, or take the offer in hand?</em></p>
+        </div>
+        <div class="r" style="--d:.40s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">02</span><span class="label">The proof</span></div>
+          <p class="hline" style="font-size:24px">One out-of-time holdout, scored once.</p>
+          <p class="k">Champions must beat the <strong>re-fit curves</strong> — not the rate card. Beating
+            the card is the floor, not the result.</p>
+          <p class="k" style="margin-top:auto">No leakage by construction; no model promoted on
+            architecture appeal.</p>
+        </div>
+        <div class="accentfill r" style="--d:.50s">
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="num">03</span><span class="label">The failure we already priced</span></div>
+          <p class="hline" style="font-size:24px">A model that learns only from wins.</p>
+          <p class="k"><strong>4.5:1</strong> lost to won is why the 1,170 lost opportunities were rebuilt
+            <em>before</em> anything was fit.</p>
+          <p class="k" style="margin-top:auto">A blocked-date loss is displaced demand — not a price
+            rejection. The two models split on exactly that line.</p>
+        </div>
+      </div>
+
+      <div class="qs r" style="--d:.62s">
+        <div>
+          <div class="label hot">Open — 01</div>
+          <p class="k" style="margin-top:9px;font-size:15px">EDIT ME: the first thing you want the room
+            to weigh in on.</p>
+        </div>
+        <div>
+          <div class="label hot">Open — 02</div>
+          <p class="k" style="margin-top:9px;font-size:15px">EDIT ME: the second open question.</p>
+        </div>
+        <div>
+          <div class="label hot">Open — 03</div>
+          <p class="k" style="margin-top:9px;font-size:15px">EDIT ME: the ask — what you need from them
+            before the next checkpoint.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+<script>
+(() => {
+  const RM = matchMedia('(prefers-reduced-motion: reduce)');
+  const stage = document.querySelector('deck-stage');
+  const slides = [...stage.children];
+  const TOTAL = slides.length;
+
+  /* ── Footer chrome: identity, tick strip, slide counter ─────────────── */
+  slides.forEach((s, i) => {
+    const frame = s.querySelector('.slide');
+    if (!frame) return;
+    const f = document.createElement('div');
+    f.className = 'footer';
+    const ticks = slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
+    f.innerHTML =
+      `<span>MLiQ · Market-Led Intelligent Quoting</span>` +
+      `<span class="ticks">${ticks}</span>` +
+      `<span>${String(i + 1).padStart(2, '0')} / ${String(TOTAL).padStart(2, '0')}</span>`;
+    frame.appendChild(f);
+    // the eyebrow carries the index too — quieter than a big page number
+    const eb = s.querySelector('.eyebrow');
+    if (eb) {
+      const idx = document.createElement('span');
+      idx.className = 'idx';
+      idx.textContent = String(i + 1).padStart(2, '0');
+      eb.appendChild(idx);
+    }
+  });
+
+  /* ── Live numbers ───────────────────────────────────────────────────── */
+  const fmt = (v, dec) =>
+    v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+  function runCounters(slide) {
+    slide.querySelectorAll('[data-count]').forEach((el, i) => {
+      const target = parseFloat(el.dataset.count);
+      if (!isFinite(target)) return;
+      const dec = +(el.dataset.decimals || 0);
+      const pre = el.dataset.prefix || '';
+      const suf = el.dataset.suffix || '';
+      if (!el.dataset.final) el.dataset.final = el.textContent;
+      const dur = 900, delay = i * 65, start = performance.now() + delay;
+      const token = (el._tk = (el._tk || 0) + 1);   // stale-run guard
+      const settle = () => { if (el._tk === token) el.textContent = el.dataset.final; };
+      const step = (now) => {
+        if (el._tk !== token) return;              // a newer run took over
+        const p = Math.min(1, Math.max(0, (now - start) / dur));
+        el.textContent = pre + fmt(target * (1 - Math.pow(1 - p, 3)), dec) + suf;
+        if (p < 1) requestAnimationFrame(step);
+        else settle();                             // exact authored string wins
+      };
+      requestAnimationFrame(step);
+      // rAF is paused in background tabs — this guarantees the number is never
+      // left frozen mid-count if the presenter tabs away and comes back.
+      setTimeout(settle, delay + dur + 120);
+    });
+  }
+
+  /* ── Bar stagger ────────────────────────────────────────────────────────
+     Polish only. The sweep itself is pure CSS keyed off [data-deck-active];
+     all this does is offset each bar's start so a group cascades. If it never
+     runs, every bar falls back to --sd's default and still animates. */
+  slides.forEach((s) => {
+    s.querySelectorAll('.meter-fill, .track .bar, .split > span').forEach((el, i) => {
+      el.style.setProperty('--sd', (0.4 + i * 0.085).toFixed(3) + 's');
+    });
+  });
+
+  stage.addEventListener('slidechange', (e) => {
+    if (RM.matches) return;                       // static page for reduced-motion
+    runCounters(e.detail.slide);
+  });
+})();
+</script>
+</body>
+</html>
