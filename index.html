@@ -533,7 +533,10 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
           <div class="label hot">The hole</div>
           <p class="hline" style="margin-top:16px;font-size:27px">2021–2023 was migrated from a legacy
             CRM <em>as wins only</em>.</p>
-          <p class="k" style="margin-top:14px">The lost deals existed as empty shells, or not at all.</p>
+          <p class="k" style="margin-top:14px">The lost deals existed as empty shells, or not at all.
+            So the file remembered every price that worked and forgot every price that didn't — and a
+            model trained on that learns <strong>what we charged</strong>, never
+            <strong>what the market refused</strong>.</p>
           <div style="display:flex;gap:52px;margin-top:auto;padding-top:32px">
             <div>
               <div class="stat sm" data-count="266">266</div>
@@ -564,6 +567,9 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
           </div>
           <p class="k" style="font-size:var(--t-body)">Demand history now runs from
             <strong>2022</strong>, not 2024. <strong>The modeling window doubled.</strong></p>
+          <p class="k" style="margin-top:12px;font-size:var(--t-micro)">Which matters because pricing
+            is seasonal: four booking years lets us see each season repeat, instead of guessing a
+            pattern from one pass through the calendar.</p>
         </div>
       </div>
     </div>
@@ -585,8 +591,9 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
         <div class="card r" style="--d:.34s">
           <div class="label hot">The trap</div>
           <p class="k" style="margin-top:14px">Reservation money fields are formulas that read the
-            <strong>parent Opportunity</strong>. Summing day money off the calendar inflates
-            revenue</p>
+            <strong>parent Opportunity</strong>. A three-day booking doesn't split its value across
+            the three days — it <em>repeats the full deal amount on each one</em>. So summing day
+            money off the calendar inflates revenue</p>
           <div class="stat sm" style="margin-top:18px" data-count="2.5" data-decimals="1"
                data-suffix="×">2.5×</div>
         </div>
@@ -594,7 +601,8 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
         <div class="card r" style="--d:.42s">
           <div class="label">The fix</div>
           <p class="k" style="margin-top:14px">Rebuild per-day dollars from the <strong>product lines
-            underneath</strong>, which reconcile to opportunity totals to the cent.</p>
+            underneath</strong> — the itemized charges on the contract, which are booked once each
+            rather than repeated. They reconcile to opportunity totals to the cent.</p>
           <div class="chip hot" style="margin-top:20px">Reconciled to the cent</div>
         </div>
 
@@ -956,8 +964,9 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 
         <div class="card r" style="--d:.68s">
           <div class="label">Why GBM starts champion</div>
-          <p class="k" style="margin-top:16px">On ~3,700 tabular events: native quantile loss for
-            negotiated ranges, monotonic constraints, and attributions a revenue manager can audit.</p>
+          <p class="k" style="margin-top:16px">On ~3,700 tabular events: it quotes a <em>range</em>,
+            not one number; it respects rules the business already knows; and it shows what moved
+            the price.</p>
           <p class="k" style="margin-top:16px">Whatever wins must also beat the re-fit curves on the
             holdout. <strong>Nothing ships on architecture appeal.</strong></p>
         </div>
