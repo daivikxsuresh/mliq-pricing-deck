@@ -302,8 +302,8 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 
 /* alternatives */
 .alt{display:grid;grid-template-columns:360px 150px minmax(0,1fr);gap:34px;align-items:start;
-     padding:21px 0;border-top:1px solid var(--line)}
-.alt .an{font-size:25px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+     padding:9px 0;border-top:1px solid var(--line)}
+.alt .an{font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
 .alt .ad{font-size:var(--t-micro);color:var(--taupe);margin-top:8px;line-height:1.45}
 .alt .ag{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.06em;
          padding-top:5px;line-height:1.6}
@@ -910,7 +910,7 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
     </div>
     <div class="rule"></div>
 
-    <div class="body" style="gap:34px;justify-content:space-between">
+    <div class="body" style="gap:16px;justify-content:space-between">
       <div>
         <div class="alt" style="border-top:none;padding:0 0 6px">
           <div class="label">Alternative</div>
@@ -948,7 +948,7 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
       </div>
 
       <div class="grid2" style="gap:30px">
-        <div class="card r" style="--d:.60s">
+        <div class="card r" style="--d:.60s;padding:24px 28px">
           <div class="label hot">One partition design · out-of-time 60 / 20 / 20</div>
           <div class="split" style="margin-top:22px">
             <span style="background:var(--gold);--w:60%"></span>
@@ -958,18 +958,35 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
           <div style="display:flex;justify-content:space-between;margin-top:12px" class="label">
             <span>Train 60</span><span>Validate 20</span><span style="color:var(--ink)">Holdout 20</span>
           </div>
-          <p class="k" style="margin-top:20px">Split by date, so the future never trains the model on
-            itself. Grouped by client, so <strong>nobody trains it and then grades it</strong>. The
-            last 20% is held back and <strong>scored once</strong>.</p>
+          <p class="k" style="margin-top:18px">Split by date, so the future never trains the model on
+            itself. Grouped by client, so <strong>nobody trains it and then grades it</strong>.</p>
         </div>
 
-        <div class="card r" style="--d:.68s">
+        <div class="card r" style="--d:.68s;padding:24px 28px">
           <div class="label">Why GBM starts champion</div>
           <p class="k" style="margin-top:16px">On ~3,700 tabular events: it quotes a <em>range</em>,
             not one number; it respects rules the business already knows; and it shows what moved
             the price.</p>
-          <p class="k" style="margin-top:16px">Whatever wins must also beat the re-fit curves on the
-            holdout. <strong>Nothing ships on architecture appeal.</strong></p>
+          <p class="k" style="margin-top:16px"><strong>Nothing ships on architecture appeal.</strong></p>
+        </div>
+      </div>
+
+      <div class="card ghost r" style="--d:.76s;border-color:var(--line-2);padding:12px 28px;
+           display:grid;grid-template-columns:1fr 1fr 1fr;gap:34px">
+        <div>
+          <div class="label hot">Holdout</div>
+          <p class="k" style="margin-top:6px;font-size:var(--t-micro)">The last 20% of the history,
+            tested <strong>once</strong>, at the end. A final exam you can't study from.</p>
+        </div>
+        <div>
+          <div class="label hot">Champion &amp; challengers</div>
+          <p class="k" style="margin-top:6px;font-size:var(--t-micro)">GBM leads today. Anything else
+            must <strong>beat it on that same exam</strong> to replace it.</p>
+        </div>
+        <div>
+          <div class="label hot">The bar</div>
+          <p class="k" style="margin-top:6px;font-size:var(--t-micro)">Not the rate card. Simple curves
+            fitted to past bookings <strong>already beat that</strong> — clear those.</p>
         </div>
       </div>
     </div>
