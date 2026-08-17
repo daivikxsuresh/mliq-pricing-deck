@@ -10,22 +10,30 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23FAF6EE'/%3E%3Cpath d='M7 23V9h3.4l5.6 8.6L21.6 9H25v14h-3.2v-8.6L16.6 22h-1.2L10.2 14.4V23z' fill='%23A57C2E'/%3E%3C/svg%3E" />
 <style>
 /* ═══ Tokens — the original MLiQ warm-paper palette ════════════════════ */
+/* The house light theme — same tokens as bangalore-kitchen-plan.html,
+   bangalore-kitchen-scoreboard.html and the user manual. The signature is
+   PURE WHITE cards floating on warm cream, not tinted paper on paper. */
 :root{
-  --paper:     #FAF6EE;   /* ground */
-  --paper-2:   #F4EFE3;   /* raised card */
-  --paper-3:   #EDE6D5;   /* deeper well */
-  --line:      #DCD3BD;
-  --line-2:    #CBBF9F;
+  --paper:     #FBF7F0;   /* warm cream ground */
+  --paper-2:   #FFFFFF;   /* raised card — pure white, this is the look */
+  --paper-3:   #F5EFE2;   /* deeper well, for the few recessed panels */
+  --gold-wash: #E8D9B8;   /* pale gold — accent fills only, never behind small text */
+  --line:      #E7DECF;
+  --line-2:    #D8CBAE;
 
-  --ink:       #181510;   /* body text — 16:1 on paper */
-  --ink-dim:   #4D463A;   /*  8.4:1 */
-  --taupe:     #6F6754;   /*  5.4:1 — mono labels */
-  --taupe-soft:#8A8270;   /*  3.6:1 — LARGE de-emphasized figures only */
+  --ink:       #2E2A26;   /* body text — 13.9:1 on white */
+  --ink-dim:   #5A5045;   /*  7.2:1 */
+  /* House value is #7A6F63; nudged 4% darker so it also clears AA on the
+     recessed wells, where it landed at 4.28:1. Visually identical. */
+  --taupe:     #726757;
+  --taupe-soft:#948878;   /*  3.4:1 — LARGE de-emphasized figures only */
 
-  --gold:      #A57C2E;   /*  3.5:1 — LARGE text + rules only */
-  /* Small gold text sits on paper, paper-2 AND paper-3. Validated against the
-     DEEPEST of those (paper-3): 4.7:1 there, 5.4:1 on the open ground. */
-  --gold-text: #815F20;
+  /* Three golds, by job. --gold NEVER carries text: on cream it measures
+     2.92:1 — the same reading that got it demoted from bar-fill to accent
+     in the house design notes. Fills, rules and bars only. */
+  --gold:      #B08D3E;
+  --gold-fig:  #9A7628;   /*  3.9:1 — LARGE display figures */
+  --gold-text: #82631F;   /*  5.2:1 — small labels, safe on every surface */
 
   --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
   --mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -78,8 +86,8 @@ section{
 /* the layer that breathes — warm light, never text */
 .slide::after{
   content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 115% 85% at 88% 2%,rgba(165,124,46,.13) 0%,transparent 58%),
-             radial-gradient(ellipse 95% 75% at 4% 100%,rgba(140,104,36,.10) 0%,transparent 58%);
+  background:radial-gradient(ellipse 115% 85% at 88% 2%,rgba(176,141,62,.14) 0%,transparent 58%),
+             radial-gradient(ellipse 95% 75% at 4% 100%,rgba(160,126,54,.11) 0%,transparent 58%);
 }
 .slide > *{position:relative;z-index:1}
 
@@ -114,15 +122,17 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 
 .num{font-family:var(--mono);font-size:23px;font-weight:600;color:var(--gold-text)}
 
+/* White card on cream: the lift comes from a soft warm shadow, matching the
+   house pages, not from a darker fill. */
 .card{
-  background:var(--paper-2);border:1px solid var(--line);border-radius:6px;
-  padding:32px 34px;
+  background:var(--paper-2);border:1px solid var(--line);border-radius:12px;
+  padding:32px 34px;box-shadow:0 2px 8px rgba(60,40,20,.07);
   transition:transform .2s var(--eo),border-color .2s var(--eo),box-shadow .2s var(--eo);
 }
 .card:hover{transform:translateY(-4px);border-color:var(--line-2);
-            box-shadow:0 14px 30px -18px rgba(24,21,16,.4)}
-.card.ghost{background:transparent}
-.card.well{background:var(--paper-3)}
+            box-shadow:0 10px 22px rgba(60,40,20,.12)}
+.card.ghost{background:transparent;box-shadow:none}
+.card.well{background:var(--paper-3);box-shadow:none}
 /* the inverted panel — this theme's emphasis move, in place of a colour fill */
 .card.ink{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .card.ink .k{color:rgba(250,246,238,.84)}
@@ -141,7 +151,7 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 .k em{font-style:italic;color:var(--ink)}
 
 .stat{font-family:var(--mono);font-size:var(--t-stat);font-weight:600;letter-spacing:-.035em;
-      line-height:1;font-variant-numeric:tabular-nums;color:var(--gold)}
+      line-height:1;font-variant-numeric:tabular-nums;color:var(--gold-fig)}
 .stat.dark{color:var(--ink)}
 .stat.sm{font-size:var(--t-stat-sm)}
 .cap{font-family:var(--mono);font-size:var(--t-label);letter-spacing:.14em;text-transform:uppercase;
@@ -149,18 +159,19 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 .cap b{color:var(--ink-dim);font-weight:500}
 
 .chip{display:inline-block;font-family:var(--mono);font-size:15px;letter-spacing:.06em;
-      padding:8px 15px;border:1px solid var(--line-2);border-radius:3px;color:var(--ink-dim);
-      background:var(--paper)}
-.chip.hot{border-color:var(--gold);color:var(--gold-text)}
+      padding:8px 15px;border:1px solid var(--line-2);border-radius:999px;color:var(--ink-dim);
+      background:var(--paper-2)}
+/* ink on the gold wash — gold-on-gold reads 3.6:1, under AA for this size */
+.chip.hot{border-color:var(--gold);color:var(--ink);background:var(--gold-wash)}
 .chip.ink{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 
 .meter{display:block;height:10px;background:var(--paper-3);border:1px solid var(--line);
-       border-radius:3px;overflow:hidden}
+       border-radius:5px;overflow:hidden}
 .meter-fill{display:block;height:100%;width:var(--w);background:var(--gold);transform-origin:left}
 .meter-fill.dimmed{background:var(--line-2)}
 
 .track{position:relative;height:16px;background:var(--paper-3);border:1px solid var(--line);
-       border-radius:3px}
+       border-radius:8px}
 .track .bar{position:absolute;top:0;right:0;height:100%;width:var(--w);border-radius:2px;
             transform-origin:right}   /* grows leftward — backwards through time */
 .bar.past{background:var(--line-2)}
@@ -179,7 +190,8 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 }
 .footer .wm{color:var(--gold-text);font-weight:600}
 .ticks{display:flex;gap:7px;align-items:center}
-.ticks i{width:16px;height:2px;background:var(--line-2);display:block;border-radius:1px}
+.ticks i{width:16px;height:2px;background:var(--line-2);display:block;border-radius:1px;
+         transition:width .3s var(--eo),background .3s var(--eo)}
 .ticks i.on{background:var(--gold);width:30px}
 
 /* ═══ Slide-specific layout ════════════════════════════════════════════ */
@@ -193,20 +205,21 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 /* the decision rule */
 .rule-eq{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-family:var(--mono);
          font-size:25px;font-weight:500;color:var(--ink)}
-.rule-eq .term{padding:10px 16px;border:1px solid var(--line-2);border-radius:3px;
-               background:var(--paper)}
+.rule-eq .term{padding:10px 16px;border:1px solid var(--line-2);border-radius:8px;
+               background:var(--paper-2);box-shadow:0 1px 4px rgba(60,40,20,.05)}
 .rule-eq .op{color:var(--taupe)}
 .rule-eq .gt{color:var(--gold-text);font-weight:600;font-size:31px}
-.rule-eq .offer{border-color:var(--gold);color:var(--gold-text);background:var(--paper-3)}
+.rule-eq .offer{border-color:var(--gold);color:var(--ink);background:var(--gold-wash);
+                box-shadow:none;font-weight:600}
 
 /* flow */
 .flow{display:flex;align-items:stretch;gap:20px}
-.node{border:1px solid var(--line);background:var(--paper-2);border-radius:6px;
-      padding:22px 24px;flex:1}
+.node{border:1px solid var(--line);background:var(--paper-2);border-radius:12px;
+      padding:22px 24px;flex:1;box-shadow:0 1px 4px rgba(60,40,20,.06)}
 .node.solid{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .node.solid .nd{color:rgba(250,246,238,.78)}
 .node.solid .label{color:var(--gold)}
-.node.dead{border-style:dashed;border-color:var(--line-2);background:transparent}
+.node.dead{border-style:dashed;border-color:var(--line-2);background:transparent;box-shadow:none}
 .node .nt{font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
 .node .nd{font-size:var(--t-micro);color:var(--ink-dim);margin-top:9px;line-height:1.45}
 .arrow{align-self:center;color:var(--gold);font-family:var(--mono);font-size:24px;flex:none}
@@ -214,6 +227,8 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 .stagerail{display:flex}
 .stagerail .st{flex:1;text-align:center;padding:22px 10px;border:1px solid var(--line);
                border-right:none;background:var(--paper-2);font-size:22px;font-weight:600}
+.stagerail .st:first-child{border-radius:10px 0 0 10px}
+.stagerail .st:last-child{border-radius:0 10px 10px 0}
 .stagerail .st:last-child{border-right:1px solid var(--line)}
 .stagerail .st .sn{display:block;font-family:var(--mono);font-size:11px;color:var(--taupe);
                    letter-spacing:.2em;margin-bottom:10px;text-transform:uppercase}
@@ -223,14 +238,16 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 
 .holds{display:flex;flex-direction:column;gap:11px}
 .hold{display:flex;align-items:center;gap:20px;padding:17px 22px;border:1px solid var(--line);
-      border-radius:4px;background:var(--paper-2);font-size:var(--t-small)}
+      border-radius:10px;background:var(--paper-2);font-size:var(--t-small);
+      box-shadow:0 1px 4px rgba(60,40,20,.06)}
 .hold .hn{font-family:var(--mono);font-size:13px;color:var(--gold-text);letter-spacing:.18em;
           width:56px;flex:none}
-.hold.first{border-color:var(--gold);background:var(--paper-3)}
+.hold.first{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-wash)}
 
 /* comparison table */
 .cmp{display:grid;grid-template-columns:168px 1fr 1fr;border:1px solid var(--line);
-     border-radius:6px;overflow:hidden;flex:1;background:var(--paper-2)}
+     border-radius:12px;overflow:hidden;flex:1;background:var(--paper-2);
+     box-shadow:0 2px 8px rgba(60,40,20,.07)}
 /* block, not flex — flex would turn each <strong> into its own flex item and
    shred the sentence into columns */
 .cmp > div{padding:20px 24px;border-bottom:1px solid var(--line);display:block}
