@@ -905,8 +905,8 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
     <div class="eyebrow r"><span class="bar"></span><span>Models II</span><span class="hair"></span></div>
     <div class="head">
       <h2 class="r" style="--d:.10s">Alternatives</h2>
-      <p class="lead r" style="--d:.18s">Every candidate is judged on the same rows, the same splits,
-        once.</p>
+      <p class="lead r" style="--d:.18s">Three we considered. Same data, same test, scored once —
+        so nothing wins on reputation.</p>
     </div>
     <div class="rule"></div>
 
@@ -920,29 +920,30 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
 
         <div class="alt r" style="--d:.34s">
           <div><div class="an">Multinomial event-type model</div>
-            <div class="ad">Advisor's suggestion: P(event type | weekday, month, year)</div></div>
+            <div class="ad">Advisor's suggestion: which <em>kind</em> of event is likely to want a
+              given date</div></div>
           <div class="ag">Event</div>
-          <div class="av"><span class="vl">Adopted</span>As the demand-shape baseline inside Model 1,
-            but arrival intensity stays separate: <em>what</em> books Wednesdays and <em>how
-            often</em> anything arrives move independently.</div>
+          <div class="av"><span class="vl">Adopted</span>It tells us <em>what</em> books a date. It
+            can't tell us <em>how many</em> ask at all — so that stays a separate model. A slow month
+            isn't the same thing as a change in client mix.</div>
         </div>
 
         <div class="alt r" style="--d:.42s">
           <div><div class="an">Summed one-day opportunity costs</div>
             <div class="ad">Price a hold as the sum of individual day costs</div></div>
           <div class="ag">Event-day</div>
-          <div class="av"><span class="vl">Kept as lower bound</span>It undercounts block displacement,
-            because a Wednesday booking kills every multi-day block crossing Wednesday, so destroyed
-            blocks are priced <strong>jointly at event grain</strong>.</div>
+          <div class="av"><span class="vl">Kept as a floor</span>It prices too low: one Wednesday
+            booking kills <em>every</em> multi-day block crossing Wednesday. So a lost block is
+            priced <strong>whole, not day by day</strong>.</div>
         </div>
 
         <div class="alt r" style="--d:.50s">
           <div><div class="an">Neural networks</div>
-            <div class="ad">Feed-forward net for value; neural point-process for arrivals</div></div>
+            <div class="ad">One net for price, one for arrivals</div></div>
           <div class="ag">Same as the champion each challenges</div>
-          <div class="av"><span class="vl">Run as challengers</span>Viable now the reconstruction
-            doubled the history. Identical rows and partitions, promoted only on shared-holdout
-            wins.</div>
+          <div class="av"><span class="vl">Run as challengers</span>Only worth trying because the
+            rebuild doubled our history. Same rows, same splits — they win the holdout or they
+            don't ship.</div>
         </div>
       </div>
 
@@ -957,9 +958,9 @@ h1 em,h2 em{font-style:italic;color:var(--gold-text);font-weight:500}
           <div style="display:flex;justify-content:space-between;margin-top:12px" class="label">
             <span>Train 60</span><span>Validate 20</span><span style="color:var(--ink)">Holdout 20</span>
           </div>
-          <p class="k" style="margin-top:20px">Ordered by event date, cut at event boundaries, grouped
-            by account, so <strong>no client and no multi-day event straddles a split</strong>. The
-            final 20% is one shared holdout, <strong>scored once</strong>.</p>
+          <p class="k" style="margin-top:20px">Split by date, so the future never trains the model on
+            itself. Grouped by client, so <strong>nobody trains it and then grades it</strong>. The
+            last 20% is held back and <strong>scored once</strong>.</p>
         </div>
 
         <div class="card r" style="--d:.68s">
